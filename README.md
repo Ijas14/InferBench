@@ -27,7 +27,7 @@ pip install -e .
 python tests/mock_server.py
 
 # Run inferbench
-inferbench run --config configs/mock_test.yaml
+python -m inferbench run --config configs/mock_test.yaml
 ```
 
 Produces `results/results.json` and `results/results.md`.

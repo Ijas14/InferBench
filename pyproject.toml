@@ -19,8 +19,9 @@ dev = [
     "pytest>=7.0",
 ]
 
-[tool.setuptools]
-packages = ["inferbench"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["inferbench*"]
 
 [tool.setuptools.package-data]
 "inferbench" = ["data/prompts/*.jsonl", "data/eval_sets/*.jsonl", "data/prompts/*.txt"]

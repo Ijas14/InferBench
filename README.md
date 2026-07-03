@@ -63,3 +63,7 @@ When you run Inferbench against a real SGLang or vLLM instance serving any model
 
 > **Note on Metrics (v0.1)**: 
 > Memory metrics (`memory_peak_kv`, etc.) are not currently scraped in this version. TTFT (Time-To-First-Token) metrics on non-streaming servers are equivalent to complete response time. Real TTFT latency requires a streaming-enabled adapter.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

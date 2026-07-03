@@ -1,0 +1,30 @@
+target:
+  endpoint: "http://localhost:30001/v1"
+  model: "mock-model"
+  api_style: "openai"
+  metrics_endpoint: "http://localhost:30001/metrics"
+
+model:
+  context_window: 262144
+  quantization: "none"
+  kv_precision: "bf16"
+
+hardware:
+  gpu: "Mock"
+  vram_gb: 0
+  driver: "mock"
+
+workloads:
+  - single_long
+  - concurrent_uniform
+  - shared_prefix
+  - mixed
+
+bands: [short, medium, long, extreme]
+concurrencies: [1, 8, 32, 128]
+seeds: [42]
+repeats: 1
+
+output:
+  dir: "results/"
+  formats: [json, markdown]

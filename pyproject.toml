@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inferbench"
+version = "0.1.0"
+description = "Deterministic LLM serving benchmark and Cliff Finder"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.28.0",
+    "tiktoken>=0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.setuptools]
+packages = ["inferbench"]
+
+[tool.setuptools.package-data]
+"inferbench" = ["data/prompts/*.jsonl", "data/eval_sets/*.jsonl", "data/prompts/*.txt"]

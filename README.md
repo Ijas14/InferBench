@@ -19,7 +19,7 @@ Three things:
 ## Quick start
 
 ```bash
-git clone https://github.com/yourname/inferbench.git
+git clone https://github.com/Ijas14/inferbench.git
 cd inferbench
 pip install -e .
 

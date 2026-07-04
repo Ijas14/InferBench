@@ -9,6 +9,7 @@ class OpenAIAdapter(ServerAdapter):
     def __init__(self, config: BenchConfig):
         self.endpoint = config.target.endpoint
         self.model = config.target.model
+        self.api_style = config.target.api_style
         self.metrics_endpoint = config.target.metrics_endpoint
 
     def send(self, request: Request) -> Response:

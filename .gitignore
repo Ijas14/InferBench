@@ -24,3 +24,4 @@ share/python-wheels/
 inferbench.zip
 inferbench_docs.zip
 /results/
+notebooks/

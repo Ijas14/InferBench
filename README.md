@@ -18,19 +18,29 @@ Three things:
 
 ## Quick start
 
+There are three ways to run `inferbench`, ranging from zero-config to fully customized YAML.
+
+### 1. Zero-Config (The fastest way)
+If you just want to blast the standard benchmark against a running server:
 ```bash
-git clone https://github.com/Ijas14/inferbench.git
-cd inferbench
-pip install -e .
+python -m inferbench run --target http://localhost:8000/v1 --model qwen2.5-7b
+```
+This automatically tests all workloads and context bands (up to the model's actual `max_model_len`).
 
-# Start the mock server in another terminal:
-python tests/mock_server.py
+### 2. The Interactive Wizard
+If you want to pick specific concurrencies or workloads without writing YAML:
+```bash
+python -m inferbench wizard
+```
+This launches a clean terminal UI to guide you through the setup and optionally saves your configuration for later.
 
-# Run inferbench
+### 3. Advanced Configuration (YAML)
+For CI/CD and strict reproducible runs, you can provide a YAML configuration file. 
+```bash
 python -m inferbench run --config configs/mock_test.yaml
 ```
 
-Produces `results/results.json` and `results/results.md`.
+All methods produce a hardware-fingerprinted `results/results.json` and `results/results.md`.
 
 ## Workloads
 

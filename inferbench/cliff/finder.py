@@ -13,11 +13,13 @@ def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: in
     
     start_time = time.time()
     
+    import random
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
         futures = []
         for req in requests:
-            # Pacing: sleep until send_at_offset
-            time_to_wait = req.send_at_offset - (time.time() - start_time)
+            # Pacing: sleep until send_at_offset + small jitter to avoid thundering herd on uvicorn
+            jitter = random.uniform(0, 0.05)
+            time_to_wait = (req.send_at_offset + jitter) - (time.time() - start_time)
             if time_to_wait > 0:
                 time.sleep(time_to_wait)
             futures.append(pool.submit(adapter.send, req))
@@ -66,8 +68,24 @@ def find_cliff(
         }
         
         # Check breaking conditions
-        if perf.get("oom", False) or error_rate == 1.0:
+        if perf.get("oom", False):
             failure_mode = "OOM or Crash"
+            curve_point["note"] = failure_mode
+            curve.append(curve_point)
+            cliff_concurrency = concurrency
+            break
+            
+        if error_rate == 1.0:
+            errors = perf.get("errors", [])
+            err_str = errors[0] if errors else "Unknown Error"
+            
+            if "maximum context length" in err_str.lower() or "too many tokens" in err_str.lower():
+                failure_mode = f"Configuration Limit (Context Exceeded)"
+            elif "connection" in err_str.lower() or "timeout" in err_str.lower():
+                failure_mode = "Server Overwhelmed (Connection/Timeout)"
+            else:
+                failure_mode = f"100% Error Rate: {err_str[:60]}"
+                
             curve_point["note"] = failure_mode
             curve.append(curve_point)
             cliff_concurrency = concurrency

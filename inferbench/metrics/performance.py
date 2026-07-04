@@ -11,6 +11,7 @@ def compute_performance(responses: List[Response], collector: MetricsCollector) 
 
     valid_responses = [r for r in responses if not r.error]
     error_count = len(responses) - len(valid_responses)
+    errors = [r.error for r in responses if r.error]
     
     if not valid_responses:
         return {
@@ -26,6 +27,7 @@ def compute_performance(responses: List[Response], collector: MetricsCollector) 
             "memory_peak_kv": 0,
             "memory_peak_total": 0,
             "error_count": error_count,
+            "errors": errors,
             "oom": False # Need to extract logic for actual OOM
         }
 
@@ -54,5 +56,6 @@ def compute_performance(responses: List[Response], collector: MetricsCollector) 
         "memory_peak_kv": 0, # Mocked
         "memory_peak_total": 0,
         "error_count": error_count,
+        "errors": errors,
         "oom": False
     }

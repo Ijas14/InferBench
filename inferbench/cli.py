@@ -29,6 +29,10 @@ def main():
 
         print(f"Starting inferbench E2E with {config.target.endpoint}")
 
+        max_model_len = adapter.get_max_model_len()
+        if max_model_len:
+            print(f"Detected max_model_len = {max_model_len}")
+
         for w_name in config.workloads:
             if w_name == "single_long":
                 workload = SingleLongWorkload(config)
@@ -44,6 +48,11 @@ def main():
 
             for band_str in config.bands:
                 band = BAND_MAP[band_str.lower()]
+                
+                # Check model limits
+                if max_model_len and band.value > max_model_len:
+                    print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
+                    continue
                 
                 # If it's concurrent_uniform, we want to run the cliff finder
                 if w_name == "concurrent_uniform":

@@ -55,6 +55,23 @@ class OpenAIAdapter(ServerAdapter):
                 token_times=[],
                 text=text
             )
+        except requests.exceptions.HTTPError as e:
+            error_msg = str(e)
+            try:
+                error_json = e.response.json()
+                if "error" in error_json and "message" in error_json["error"]:
+                    error_msg = f"{e.response.status_code} {e.response.reason}: {error_json['error']['message']}"
+            except Exception:
+                pass
+            return Response(
+                request=request,
+                send_time=send_time,
+                first_token_time=None,
+                complete_time=time.time(),
+                output_tokens=0,
+                token_times=[],
+                error=error_msg
+            )
         except Exception as e:
             return Response(
                 request=request,
@@ -65,6 +82,25 @@ class OpenAIAdapter(ServerAdapter):
                 token_times=[],
                 error=str(e)
             )
+
+    def get_max_model_len(self) -> Optional[int]:
+        try:
+            # Assumes endpoint is /v1, so models endpoint is /v1/models
+            url = self.endpoint.rstrip("/")
+            if url.endswith("/v1"):
+                url += "/models"
+            else:
+                url += "/v1/models"
+                
+            res = requests.get(url, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                for m in data.get("data", []):
+                    if m.get("id") == self.model and "max_model_len" in m:
+                        return m.get("max_model_len")
+        except Exception:
+            pass
+        return None
 
     def health(self) -> bool:
         try:

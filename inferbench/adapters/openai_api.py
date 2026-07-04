@@ -22,6 +22,7 @@ class OpenAIAdapter(ServerAdapter):
                 "model": self.model,
                 "messages": [{"role": "user", "content": request.prompt}],
                 "max_tokens": request.max_tokens,
+                "temperature": 0.0,
                 "stream": False
             }
             url = self.endpoint + "/chat/completions"
@@ -30,6 +31,7 @@ class OpenAIAdapter(ServerAdapter):
                 "model": self.model,
                 "prompt": request.prompt,
                 "max_tokens": request.max_tokens,
+                "temperature": 0.0,
                 "stream": False
             }
             url = self.endpoint + "/completions"

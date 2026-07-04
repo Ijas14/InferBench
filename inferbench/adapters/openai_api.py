@@ -63,6 +63,9 @@ class OpenAIAdapter(ServerAdapter):
                     error_msg = f"{e.response.status_code} {e.response.reason}: {error_json['error']['message']}"
             except Exception:
                 pass
+                
+            if e.response.status_code in [400, 404]:
+                raise ValueError(f"FATAL CONFIGURATION ERROR: The server rejected the request with a {e.response.status_code}. Details: {error_msg}")
             return Response(
                 request=request,
                 send_time=send_time,

@@ -53,15 +53,37 @@ class BenchConfig:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         
-        return cls(
+        config = cls(
             target=TargetConfig(**data.get("target", {})),
             model=ModelConfig(**data.get("model", {})),
             hardware=HardwareConfig(**data.get("hardware", {})),
             workloads=data.get("workloads", []),
             bands=data.get("bands", []),
             concurrencies=data.get("concurrencies", []),
-            seeds=data.get("seeds", []),
+            seeds=data.get("seeds", [42]),
             repeats=data.get("repeats", 1),
             quality=QualityConfig(**data.get("quality", {})) if "quality" in data else QualityConfig(),
             output=OutputConfig(**data.get("output", {})) if "output" in data else OutputConfig()
         )
+        config.validate()
+        return config
+
+    def validate(self):
+        if not isinstance(self.concurrencies, list):
+            raise ValueError(f"Config Error: 'concurrencies' must be a list, got {type(self.concurrencies).__name__} ({self.concurrencies}). Did you mean: concurrencies: [{self.concurrencies}]?")
+        if not isinstance(self.bands, list):
+            raise ValueError(f"Config Error: 'bands' must be a list, got {type(self.bands).__name__}.")
+        if not isinstance(self.workloads, list):
+            raise ValueError(f"Config Error: 'workloads' must be a list, got {type(self.workloads).__name__}.")
+        if not isinstance(self.seeds, list):
+            raise ValueError(f"Config Error: 'seeds' must be a list, got {type(self.seeds).__name__}.")
+        
+        valid_workloads = {"single_long", "concurrent_uniform", "shared_prefix", "mixed"}
+        for w in self.workloads:
+            if w not in valid_workloads:
+                raise ValueError(f"Config Error: Unknown workload '{w}'. Valid workloads are {list(valid_workloads)}")
+        
+        valid_bands = {"short", "medium", "long", "extreme"}
+        for b in self.bands:
+            if str(b).lower() not in valid_bands:
+                raise ValueError(f"Config Error: Unknown band '{b}'. Valid bands are {list(valid_bands)}")

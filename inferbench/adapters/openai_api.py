@@ -14,22 +14,37 @@ class OpenAIAdapter(ServerAdapter):
     def send(self, request: Request) -> Response:
         send_time = time.time()
         
-        payload = {
-            "model": self.model,
-            "prompt": request.prompt,
-            "max_tokens": request.max_tokens,
-            "stream": False # Mock server doesn't stream yet, keeping simple for Day 1
-        }
+        is_chat = (self.api_style == "openai_chat")
         
+        if is_chat:
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": request.prompt}],
+                "max_tokens": request.max_tokens,
+                "stream": False
+            }
+            url = self.endpoint + "/chat/completions"
+        else:
+            payload = {
+                "model": self.model,
+                "prompt": request.prompt,
+                "max_tokens": request.max_tokens,
+                "stream": False
+            }
+            url = self.endpoint + "/completions"
+            
         try:
-            res = requests.post(self.endpoint + "/completions", json=payload, timeout=600)
+            res = requests.post(url, json=payload, timeout=600)
             res.raise_for_status()
             data = res.json()
             complete_time = time.time()
             text = ""
             if "choices" in data and len(data["choices"]) > 0:
-                text = data["choices"][0].get("text", "")
-            # For non-streaming, TTFT == complete_time
+                if is_chat:
+                    text = data["choices"][0].get("message", {}).get("content", "")
+                else:
+                    text = data["choices"][0].get("text", "")
+                    
             return Response(
                 request=request,
                 send_time=send_time,

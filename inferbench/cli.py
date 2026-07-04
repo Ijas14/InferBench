@@ -38,12 +38,19 @@ def run_wizard() -> BenchConfig:
         exit(1)
         
     print("╭─ inferbench setup ────────────────────────────────────────╮")
+    from questionary import Choice
+    
     endpoint = questionary.text("Server endpoint:", default="http://localhost:8000/v1").ask()
     model = questionary.text("Model name:", default="qwen2.5-7b").ask()
     
     bands = questionary.checkbox(
         "Context bands:",
-        choices=["short", "medium", "long", "extreme"]
+        choices=[
+            Choice("short", checked=True),
+            Choice("medium", checked=True),
+            Choice("long", checked=True),
+            Choice("extreme", checked=True)
+        ]
     ).ask()
     
     concurrency_str = questionary.text("Concurrency ladder (comma-separated):", default="1, 8, 32, 128").ask()
@@ -51,7 +58,12 @@ def run_wizard() -> BenchConfig:
     
     workloads = questionary.checkbox(
         "Workloads:",
-        choices=["single_long", "concurrent_uniform", "shared_prefix", "mixed"]
+        choices=[
+            Choice("single_long", checked=True),
+            Choice("concurrent_uniform", checked=True),
+            Choice("shared_prefix", checked=True),
+            Choice("mixed", checked=True)
+        ]
     ).ask()
     
     out_dir = questionary.text("Output directory:", default="results/").ask()

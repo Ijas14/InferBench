@@ -32,6 +32,10 @@ class MixedWorkload(Workload):
             else:
                 req_band = ContextBand.EXTREME
                 
+            # Cap the band to the requested max band (to respect hardware constraints)
+            if req_band.value > band.value:
+                req_band = band
+                
             prompt = self.corpus.sample(seed=seed + i, target_tokens=req_band.value)
             
             # Poisson arrival offset: exponential distribution of inter-arrival times

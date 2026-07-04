@@ -16,6 +16,14 @@ Three things:
 
 3. **Hardware-fingerprinted results.** Every result includes a full hardware + software fingerprint. No fingerprint = not a valid result. Results are comparable across the community.
 
+## Installation
+
+```bash
+git clone https://github.com/Ijas14/inferbench.git
+cd inferbench
+pip install -e .
+```
+
 ## Quick start
 
 There are three ways to run `inferbench`, ranging from zero-config to fully customized YAML.

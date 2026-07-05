@@ -99,5 +99,43 @@ def test_cliff_finder_reproducibility():
         assert c1["error_rate"] == c2["error_rate"]
         assert c1["ttft_p99"] == c2["ttft_p99"]
 
+        assert c1["ttft_p99"] == c2["ttft_p99"]
+
+def test_cliff_finder_timeout():
+    config = BenchConfig.from_yaml("configs/mock_test.yaml")
+    
+    class HangingMockAdapter(OpenAIAdapter):
+        def __init__(self, config):
+            super().__init__(config)
+            
+        def send(self, request):
+            c = request.metadata.get("concurrency", 1)
+            from inferbench.adapters.base import Response
+            import time
+            if c >= 32:
+                # Simulate a hang that exceeds a 1-second timeout
+                time.sleep(1.5)
+                
+            return Response(
+                request=request,
+                send_time=0.0,
+                first_token_time=0.1,
+                complete_time=0.1,
+                output_tokens=10,
+                token_times=[],
+                error=None,
+                text="Mocked"
+            )
+
+    adapter = HangingMockAdapter(config)
+    workload = ConcurrentUniformWorkload(config)
+    
+    # We pass timeout_seconds=1 to force the timeout on c=32
+    result = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], timeout_seconds=1, seed=999)
+    
+    assert result["oom_threshold"] == 32
+    assert "Cell Timeout" in result["failure_mode"]
+    assert "band=SHORT" in result["failure_mode"]
+
 if __name__ == "__main__":
     test_cliff_finder()

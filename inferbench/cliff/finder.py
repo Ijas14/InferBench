@@ -18,26 +18,30 @@ def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: in
     import random
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
         futures = []
+        future_to_req = {}
         for req in requests:
             # Pacing: sleep until send_at_offset + small jitter to avoid thundering herd on uvicorn
             jitter = random.uniform(0, 0.05)
             time_to_wait = (req.send_at_offset + jitter) - (time.time() - start_time)
             if time_to_wait > 0:
                 time.sleep(time_to_wait)
-            futures.append(pool.submit(adapter.send, req))
+            f = pool.submit(adapter.send, req)
+            futures.append(f)
+            future_to_req[f] = req
         
         responses = []
         for f in futures:
+            req = future_to_req[f]
             remaining = deadline - time.time()
             if remaining <= 0:
                 f.cancel()
-                responses.append(Response(request_id=-1, text="", first_token_time=0.0, complete_time=0.0, prompt_tokens=0, completion_tokens=0, error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
+                responses.append(Response(request=req, send_time=0.0, first_token_time=0.0, complete_time=0.0, output_tokens=0, token_times=[], error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
             else:
                 try:
                     responses.append(f.result(timeout=remaining))
                 except TimeoutError:
                     f.cancel()
-                    responses.append(Response(request_id=-1, text="", first_token_time=0.0, complete_time=0.0, prompt_tokens=0, completion_tokens=0, error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
+                    responses.append(Response(request=req, send_time=0.0, first_token_time=0.0, complete_time=0.0, output_tokens=0, token_times=[], error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
     
     collector.stop()
     return compute_performance(responses, collector)
@@ -93,7 +97,9 @@ def find_cliff(
             errors = perf.get("errors", [])
             err_str = errors[0] if errors else "Unknown Error"
             
-            if "maximum context length" in err_str.lower() or "too many tokens" in err_str.lower():
+            if err_str.startswith("Cell Timeout"):
+                failure_mode = err_str
+            elif "maximum context length" in err_str.lower() or "too many tokens" in err_str.lower():
                 failure_mode = f"Configuration Limit (Context Exceeded)"
             elif "connection" in err_str.lower() or "timeout" in err_str.lower():
                 failure_mode = "Server Overwhelmed (Connection/Timeout)"

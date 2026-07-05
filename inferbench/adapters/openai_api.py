@@ -68,20 +68,20 @@ class OpenAIAdapter(ServerAdapter):
                             chunk = json.loads(data_str)
                             now = time.time()
                             
-                            if first_token_time is None:
-                                first_token_time = now
-                                
-                            token_times.append(now)
-                            
-                            if is_chat:
-                                delta = chunk.get("choices", [{}])[0].get("delta", {})
-                                chunk_text = delta.get("content", "")
-                            else:
-                                chunk_text = chunk.get("choices", [{}])[0].get("text", "")
-                                
-                            if chunk_text:
-                                text_chunks.append(chunk_text)
-                                output_tokens += 1
+                            choices = chunk.get("choices", [])
+                            if choices:
+                                if is_chat:
+                                    delta = choices[0].get("delta", {})
+                                    chunk_text = delta.get("content", "")
+                                else:
+                                    chunk_text = choices[0].get("text", "")
+                                    
+                                if chunk_text:
+                                    if first_token_time is None:
+                                        first_token_time = now
+                                    token_times.append(now)
+                                    text_chunks.append(chunk_text)
+                                    output_tokens += 1
                                 
                             if "usage" in chunk and chunk["usage"]:
                                 usage_tokens = chunk["usage"].get("completion_tokens")
@@ -112,8 +112,7 @@ class OpenAIAdapter(ServerAdapter):
             except Exception:
                 pass
                 
-            if e.response.status_code in [400, 404]:
-                raise ValueError(f"FATAL CONFIGURATION ERROR: The server rejected the request with a {e.response.status_code}. Details: {error_msg}")
+            # Continue to return Response with the extracted error string
             return Response(
                 request=request,
                 send_time=send_time,

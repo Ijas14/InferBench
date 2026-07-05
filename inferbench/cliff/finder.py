@@ -91,15 +91,15 @@ def find_cliff(
             cliff_concurrency = concurrency
             break
             
-        if error_rate > 0.1:
-            failure_mode = "High Error Rate (>10%)"
+        if error_rate > workload.config.cliff_error_threshold:
+            failure_mode = f"High Error Rate (>{workload.config.cliff_error_threshold*100:.0f}%)"
             curve_point["note"] = failure_mode
             curve.append(curve_point)
             cliff_concurrency = concurrency
             break
             
-        if baseline_ttft_p99 and baseline_ttft_p99 > 0 and ttft_p99 > 10 * baseline_ttft_p99:
-            failure_mode = "Latency Spike (>10x baseline)"
+        if baseline_ttft_p99 and baseline_ttft_p99 > 0 and ttft_p99 > workload.config.cliff_latency_multiplier * baseline_ttft_p99:
+            failure_mode = f"Latency Spike (>{workload.config.cliff_latency_multiplier}x baseline)"
             curve_point["note"] = failure_mode
             curve.append(curve_point)
             cliff_concurrency = concurrency

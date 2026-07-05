@@ -18,9 +18,9 @@ class OpenAIAdapter(ServerAdapter):
         from urllib.parse import urlparse
         parsed = urlparse(self.endpoint)
         if parsed.scheme not in ["http", "https"]:
-            raise ValueError(f"VibeSec Error: Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
+            raise ValueError(f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
         if parsed.hostname in ["169.254.169.254", "metadata.google.internal", "metadata"]:
-            raise ValueError(f"VibeSec Error: Blocked attempt to access cloud metadata endpoint: {parsed.hostname}")
+            raise ValueError(f"Blocked attempt to access cloud metadata endpoint: {parsed.hostname}")
 
         
         is_chat = (self.api_style == "openai_chat")
@@ -31,7 +31,8 @@ class OpenAIAdapter(ServerAdapter):
                 "messages": [{"role": "user", "content": request.prompt}],
                 "max_tokens": request.max_tokens,
                 "temperature": 0.0,
-                "stream": False
+                "stream": True,
+                "stream_options": {"include_usage": True}
             }
             url = self.endpoint + "/chat/completions"
         else:
@@ -40,29 +41,66 @@ class OpenAIAdapter(ServerAdapter):
                 "prompt": request.prompt,
                 "max_tokens": request.max_tokens,
                 "temperature": 0.0,
-                "stream": False
+                "stream": True,
+                "stream_options": {"include_usage": True}
             }
             url = self.endpoint + "/completions"
             
         try:
-            res = requests.post(url, json=payload, timeout=600)
+            res = requests.post(url, json=payload, timeout=600, stream=True)
             res.raise_for_status()
-            data = res.json()
+            
+            import json
+            first_token_time = None
+            complete_time = None
+            output_tokens = 0
+            token_times = []
+            text_chunks = []
+            
+            for line in res.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith("data: "):
+                        data_str = line_str[6:]
+                        if data_str.strip() == "[DONE]":
+                            continue
+                        try:
+                            chunk = json.loads(data_str)
+                            now = time.time()
+                            
+                            if first_token_time is None:
+                                first_token_time = now
+                                
+                            token_times.append(now)
+                            
+                            if is_chat:
+                                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                                chunk_text = delta.get("content", "")
+                            else:
+                                chunk_text = chunk.get("choices", [{}])[0].get("text", "")
+                                
+                            if chunk_text:
+                                text_chunks.append(chunk_text)
+                                output_tokens += 1
+                                
+                            if "usage" in chunk and chunk["usage"]:
+                                usage_tokens = chunk["usage"].get("completion_tokens")
+                                if usage_tokens is not None:
+                                    output_tokens = usage_tokens
+                                    
+                        except json.JSONDecodeError:
+                            pass
+                            
             complete_time = time.time()
-            text = ""
-            if "choices" in data and len(data["choices"]) > 0:
-                if is_chat:
-                    text = data["choices"][0].get("message", {}).get("content", "")
-                else:
-                    text = data["choices"][0].get("text", "")
+            text = "".join(text_chunks)
                     
             return Response(
                 request=request,
                 send_time=send_time,
-                first_token_time=complete_time, 
+                first_token_time=first_token_time, 
                 complete_time=complete_time,
-                output_tokens=data.get("usage", {}).get("completion_tokens", request.max_tokens),
-                token_times=[],
+                output_tokens=output_tokens,
+                token_times=token_times,
                 text=text
             )
         except requests.exceptions.HTTPError as e:

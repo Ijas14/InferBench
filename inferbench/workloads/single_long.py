@@ -30,21 +30,12 @@ class FillerCorpus:
         self.decode_func = None
         
         try:
-            from transformers import AutoTokenizer
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.tokenizer_func = tokenizer.encode
-            self.decode_func = tokenizer.decode
-        except Exception:
-            try:
-                import tiktoken
-                enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
-                self.tokenizer_func = enc.encode
-                self.decode_func = enc.decode
-            except ImportError:
-                # Absolute fallback if neither is installed, keeping word count approx as last resort but warning
-                print("WARNING: Neither transformers nor tiktoken is installed. Tokenization will be approximate.")
-                self.tokenizer_func = lambda t: t.split()
-                self.decode_func = lambda t: " ".join(t)
+            import tiktoken
+            enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+            self.tokenizer_func = enc.encode
+            self.decode_func = enc.decode
+        except ImportError:
+            raise ImportError("Please install tiktoken: pip install tiktoken")
 
     def sample(self, seed: int, target_tokens: int) -> str:
         rng = random.Random(seed)

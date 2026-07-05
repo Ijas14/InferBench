@@ -47,6 +47,8 @@ class BenchConfig:
     repeats: int = 1
     quality: QualityConfig = field(default_factory=QualityConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
+    cliff_latency_multiplier: float = 10.0
+    cliff_error_threshold: float = 0.1
 
     @classmethod
     def from_yaml(cls, path: str) -> "BenchConfig":
@@ -63,7 +65,9 @@ class BenchConfig:
             seeds=data.get("seeds", [42]),
             repeats=data.get("repeats", 1),
             quality=QualityConfig(**data.get("quality", {})) if "quality" in data else QualityConfig(),
-            output=OutputConfig(**data.get("output", {})) if "output" in data else OutputConfig()
+            output=OutputConfig(**data.get("output", {})) if "output" in data else OutputConfig(),
+            cliff_latency_multiplier=float(data.get("cliff_latency_multiplier", 10.0)),
+            cliff_error_threshold=float(data.get("cliff_error_threshold", 0.1))
         )
         config.validate()
         return config

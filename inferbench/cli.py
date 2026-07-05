@@ -1,6 +1,9 @@
 import argparse
 import json
 import os
+import sys
+import time
+
 from inferbench.config.schema import BenchConfig
 from inferbench.config.defaults import BAND_MAP
 from inferbench.workloads.single_long import SingleLongWorkload
@@ -13,6 +16,20 @@ from inferbench.metrics.performance import compute_performance
 from inferbench.cliff.finder import find_cliff, run_cell_with_pacing
 from inferbench.results.fingerprint import get_hardware_fingerprint
 from inferbench.results.markdown_exporter import export_markdown
+
+WORKLOAD_FACTORY = {
+    "single_long": SingleLongWorkload,
+    "concurrent_uniform": ConcurrentUniformWorkload,
+    "shared_prefix": SharedPrefixWorkload,
+    "mixed": MixedWorkload,
+}
+
+def safe_join(base_directory, user_path):
+    base = os.path.abspath(os.path.realpath(base_directory))
+    target = os.path.abspath(os.path.realpath(os.path.join(base, user_path)))
+    if os.path.commonpath([base, target]) != base:
+        raise ValueError("Path traversal detected in output directory.")
+    return target
 
 def get_default_config(endpoint: str, model: str) -> BenchConfig:
     import yaml
@@ -35,7 +52,7 @@ def run_wizard() -> BenchConfig:
         import questionary
     except ImportError:
         print("Please install questionary: pip install questionary")
-        exit(1)
+        sys.exit(1)
         
     print("╭─ inferbench setup ────────────────────────────────────────╮")
     from questionary import Choice
@@ -106,6 +123,49 @@ def run_wizard() -> BenchConfig:
         
     return config
 
+def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig) -> list:
+    results = []
+    max_model_len = adapter.get_max_model_len()
+    
+    for band_str in config.bands:
+        band = BAND_MAP[band_str.lower()]
+        if max_model_len and band.value > max_model_len:
+            print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
+            continue
+            
+        print(f"Running cliff finder for {workload.__class__.__name__} | Band: {band.name}")
+        cliff_res = find_cliff(adapter, workload, band, config.concurrencies, seed=config.seeds[0])
+        results.append(cliff_res)
+    return results
+
+def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, config: BenchConfig) -> list:
+    results = []
+    max_model_len = adapter.get_max_model_len()
+    
+    for band_str in config.bands:
+        band = BAND_MAP[band_str.lower()]
+        if max_model_len and band.value > max_model_len:
+            print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
+            continue
+            
+        for concurrency in config.concurrencies:
+            for seed in config.seeds:
+                for _ in range(config.repeats):
+                    print(f"Running {w_name} | Band: {band.name} | Concurrency: {concurrency} | Seed: {seed}")
+                    requests = workload.schedule(seed=seed, band=band, concurrency=concurrency)
+                    
+                    perf_metrics = run_cell_with_pacing(adapter, requests, max(1, concurrency))
+                    
+                    result = {
+                        "workload": w_name,
+                        "context_band": band.name,
+                        "concurrency": concurrency,
+                        "seed": seed,
+                        **perf_metrics
+                    }
+                    results.append(result)
+    return results
+
 def main():
     parser = argparse.ArgumentParser(description="Inferbench Runner")
     parser.add_argument("command", choices=["run", "wizard"])
@@ -130,88 +190,51 @@ def main():
     curves = []
 
     print(f"Starting inferbench E2E with {config.target.endpoint}")
-    print("Waiting for inference server to become ready...")
     
-    import time
-    import sys
-    max_retries = 300
+    timeout_s = 600
+    print(f"Waiting for inference server at {config.target.endpoint} (timeout: {timeout_s}s)... ", end="", flush=True)
+    deadline = time.time() + timeout_s
     ready = False
-    for i in range(max_retries):
+    attempt = 1
+    
+    while time.time() < deadline:
         if adapter.health():
             ready = True
             break
+        print(".", end="", flush=True)
         time.sleep(2)
+        attempt += 1
         
     if not ready:
-        print("\n[FATAL ERROR] Server did not become ready after 10 minutes. Aborting.")
+        print(f"\n[FATAL ERROR] Server did not become ready after {timeout_s} seconds (Attempted {attempt} times). Aborting.")
         sys.exit(1)
         
-    print("Server is ready! Beginning benchmark...")
+    print(" Ready.\nBeginning benchmark...")
 
     max_model_len = adapter.get_max_model_len()
     if max_model_len:
         print(f"Detected max_model_len = {max_model_len}")
 
     for w_name in config.workloads:
-        if w_name == "single_long":
-            workload = SingleLongWorkload(config)
-        elif w_name == "concurrent_uniform":
-            workload = ConcurrentUniformWorkload(config)
-        elif w_name == "shared_prefix":
-            workload = SharedPrefixWorkload(config)
-        elif w_name == "mixed":
-            workload = MixedWorkload(config)
-        else:
+        if w_name not in WORKLOAD_FACTORY:
             print(f"Skipping unknown workload {w_name}")
             continue
-
-        for band_str in config.bands:
-            band = BAND_MAP[band_str.lower()]
             
-            # Check model limits
-            if max_model_len and band.value > max_model_len:
-                print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
-                continue
-            
-            # If it's concurrent_uniform, we want to run the cliff finder
-            if w_name == "concurrent_uniform":
-                print(f"Running cliff finder for {w_name} | Band: {band.name}")
-                cliff_res = find_cliff(adapter, workload, band, config.concurrencies, seed=config.seeds[0])
-                curves.append(cliff_res)
-                # We can also log the curve into the results list
-                all_results.append(cliff_res)
-                continue
-            
-            for concurrency in config.concurrencies:
-                for seed in config.seeds:
-                    for _ in range(config.repeats):
-                        print(f"Running {w_name} | Band: {band.name} | Concurrency: {concurrency} | Seed: {seed}")
-                        requests = workload.schedule(seed=seed, band=band, concurrency=concurrency)
-                        
-                        perf_metrics = run_cell_with_pacing(adapter, requests, max(1, concurrency))
-                        
-                        result = {
-                            "workload": w_name,
-                            "context_band": band.name,
-                            "concurrency": concurrency,
-                            "seed": seed,
-                            **perf_metrics
-                        }
-                        all_results.append(result)
-    
-    def safe_join(base_directory, user_path):
-        base = os.path.abspath(os.path.realpath(base_directory))
-        target = os.path.abspath(os.path.realpath(os.path.join(base, user_path)))
-        if os.path.commonpath([base, target]) != base:
-            raise ValueError("VibeSec Error: Path traversal detected in output directory.")
-        return target
+        workload = WORKLOAD_FACTORY[w_name](config)
         
+        if w_name == "concurrent_uniform":
+            res = execute_cliff_finder(adapter, workload, config)
+            all_results.extend(res)
+            curves.extend(res)
+        else:
+            res = execute_standard_workload(adapter, workload, w_name, config)
+            all_results.extend(res)
+            
     try:
         # Default base is current working directory
         safe_out_dir = safe_join(os.getcwd(), config.output.dir)
     except ValueError as e:
         print(f"\n[FATAL ERROR] {e}")
-        import sys
         sys.exit(1)
 
     os.makedirs(safe_out_dir, exist_ok=True)

@@ -26,3 +26,5 @@ inferbench_docs.zip
 /results/
 notebooks/
 llama.cpp/
+archive/
+*.zip

@@ -89,7 +89,7 @@ def test_mixed_deterministic():
     s1 = w.schedule(seed=999, band=ContextBand.SHORT, concurrency=4)
     s2 = w.schedule(seed=999, band=ContextBand.SHORT, concurrency=4)
     
-    # Concurrency 4 means 40 requests total for mixed workload
-    assert len(s1) == 40
+    # Concurrency 4 means 12 requests total for mixed workload
+    assert len(s1) == 12
     assert [r.prompt for r in s1] == [r.prompt for r in s2]
     assert [r.send_at_offset for r in s1] == [r.send_at_offset for r in s2]

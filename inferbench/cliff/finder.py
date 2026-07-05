@@ -5,13 +5,15 @@ from inferbench.workloads.base import Workload
 from inferbench.config.defaults import ContextBand
 from inferbench.metrics.collector import MetricsCollector
 from inferbench.metrics.performance import compute_performance
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from inferbench.adapters.base import Response
 
-def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: int) -> dict:
+def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: int, timeout_seconds: int = 600, band_name: str = "UNKNOWN") -> dict:
     collector = MetricsCollector()
     collector.start()
     
     start_time = time.time()
+    deadline = start_time + timeout_seconds
     
     import random
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
@@ -24,7 +26,18 @@ def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: in
                 time.sleep(time_to_wait)
             futures.append(pool.submit(adapter.send, req))
         
-        responses = [f.result() for f in futures]
+        responses = []
+        for f in futures:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                f.cancel()
+                responses.append(Response(request_id=-1, text="", first_token_time=0.0, complete_time=0.0, prompt_tokens=0, completion_tokens=0, error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
+            else:
+                try:
+                    responses.append(f.result(timeout=remaining))
+                except TimeoutError:
+                    f.cancel()
+                    responses.append(Response(request_id=-1, text="", first_token_time=0.0, complete_time=0.0, prompt_tokens=0, completion_tokens=0, error=f"Cell Timeout (>{timeout_seconds}s, band={band_name})"))
     
     collector.stop()
     return compute_performance(responses, collector)
@@ -34,6 +47,7 @@ def find_cliff(
     workload: Workload,
     context_band: ContextBand,
     concurrency_ladder: List[int],
+    timeout_seconds: int = 600,
     seed: int = 42
 ) -> Dict[str, Any]:
     """
@@ -52,7 +66,7 @@ def find_cliff(
     for concurrency in concurrency_ladder:
         requests = workload.schedule(seed=seed, band=context_band, concurrency=concurrency)
         
-        perf = run_cell_with_pacing(adapter, requests, concurrency)
+        perf = run_cell_with_pacing(adapter, requests, concurrency, timeout_seconds, context_band.name)
         
         ttft_p99 = perf.get("latency_ttft_p99", 0)
         if concurrency == 1:

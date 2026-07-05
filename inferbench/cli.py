@@ -123,7 +123,14 @@ def run_wizard() -> BenchConfig:
         
     return config
 
-def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig) -> list:
+BAND_TIMEOUTS = {
+    "SHORT": 120,
+    "MEDIUM": 300,
+    "LONG": 600,
+    "EXTREME": 900,
+}
+
+def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig, all_results: list, save_checkpoint) -> list:
     results = []
     max_model_len = adapter.get_max_model_len()
     
@@ -133,12 +140,15 @@ def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig) 
             print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
             continue
             
+        timeout_seconds = BAND_TIMEOUTS.get(band.name, config.cell_timeout_seconds)
         print(f"Running cliff finder for {workload.__class__.__name__} | Band: {band.name}")
-        cliff_res = find_cliff(adapter, workload, band, config.concurrencies, seed=config.seeds[0])
+        cliff_res = find_cliff(adapter, workload, band, config.concurrencies, timeout_seconds, seed=config.seeds[0])
+        all_results.append(cliff_res)
         results.append(cliff_res)
+        save_checkpoint()
     return results
 
-def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, config: BenchConfig) -> list:
+def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, config: BenchConfig, all_results: list, save_checkpoint) -> list:
     results = []
     max_model_len = adapter.get_max_model_len()
     
@@ -148,13 +158,14 @@ def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, con
             print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
             continue
             
+        timeout_seconds = BAND_TIMEOUTS.get(band.name, config.cell_timeout_seconds)
         for concurrency in config.concurrencies:
             for seed in config.seeds:
                 for _ in range(config.repeats):
                     print(f"Running {w_name} | Band: {band.name} | Concurrency: {concurrency} | Seed: {seed}")
                     requests = workload.schedule(seed=seed, band=band, concurrency=concurrency)
                     
-                    perf_metrics = run_cell_with_pacing(adapter, requests, max(1, concurrency))
+                    perf_metrics = run_cell_with_pacing(adapter, requests, max(1, concurrency), timeout_seconds, band.name)
                     
                     result = {
                         "workload": w_name,
@@ -163,7 +174,9 @@ def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, con
                         "seed": seed,
                         **perf_metrics
                     }
+                    all_results.append(result)
                     results.append(result)
+                    save_checkpoint()
     return results
 
 def main():
@@ -215,21 +228,6 @@ def main():
     if max_model_len:
         print(f"Detected max_model_len = {max_model_len}")
 
-    for w_name in config.workloads:
-        if w_name not in WORKLOAD_FACTORY:
-            print(f"Skipping unknown workload {w_name}")
-            continue
-            
-        workload = WORKLOAD_FACTORY[w_name](config)
-        
-        if w_name == "concurrent_uniform":
-            res = execute_cliff_finder(adapter, workload, config)
-            all_results.extend(res)
-            curves.extend(res)
-        else:
-            res = execute_standard_workload(adapter, workload, w_name, config)
-            all_results.extend(res)
-            
     try:
         # Default base is current working directory
         safe_out_dir = safe_join(os.getcwd(), config.output.dir)
@@ -238,8 +236,33 @@ def main():
         sys.exit(1)
 
     os.makedirs(safe_out_dir, exist_ok=True)
-    
     fingerprint = get_hardware_fingerprint()
+    
+    def save_checkpoint():
+        if "json" in config.output.formats:
+            out_path = os.path.join(safe_out_dir, "results.json")
+            with open(out_path, "w") as f:
+                json.dump({
+                    "fingerprint": fingerprint,
+                    "results": all_results
+                }, f, indent=2)
+                
+        if "markdown" in config.output.formats:
+            md_path = os.path.join(safe_out_dir, "results.md")
+            export_markdown(all_results, fingerprint, md_path)
+
+    for w_name in config.workloads:
+        if w_name not in WORKLOAD_FACTORY:
+            print(f"Skipping unknown workload {w_name}")
+            continue
+            
+        workload = WORKLOAD_FACTORY[w_name](config)
+        
+        if w_name == "concurrent_uniform":
+            res = execute_cliff_finder(adapter, workload, config, all_results, save_checkpoint)
+            curves.extend(res)
+        else:
+            execute_standard_workload(adapter, workload, w_name, config, all_results, save_checkpoint)
     
     if "json" in config.output.formats:
         out_path = os.path.join(safe_out_dir, "results.json")

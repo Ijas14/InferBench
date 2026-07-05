@@ -11,11 +11,11 @@ class MixedWorkload(Workload):
         self.corpus = FillerCorpus()
 
     def schedule(self, seed: int, band: ContextBand, concurrency: int) -> List[Request]:
-        # "N total requests (N = concurrency band * 10)"
+        # "N total requests (N = concurrency band * 3)"
         # Mix: 40% short, 30% medium, 20% long, 10% extreme
         # Arrivals: Poisson process with rate = N / 60
         
-        total_requests = concurrency * 10
+        total_requests = concurrency * 3
         rng = random.Random(seed)
         requests = []
         

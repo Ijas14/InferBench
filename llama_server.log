@@ -1,0 +1,7 @@
+0.00.176.898 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.180.545 I srv    load_model: loading model 'llama.cpp/models/qwen2.5-0.5b-instruct-q8_0.gguf'
+0.00.575.420 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.947.409 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 8192, kv_unified = 'false'
+0.01.960.373 I srv  llama_server: model loaded
+0.01.960.380 I srv  llama_server: listening on http://127.0.0.1:8081
+51.49.426.901 I srv    operator(): operator(): cleaning up before exit...

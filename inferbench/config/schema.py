@@ -49,6 +49,7 @@ class BenchConfig:
     output: OutputConfig = field(default_factory=OutputConfig)
     cliff_latency_multiplier: float = 10.0
     cliff_error_threshold: float = 0.1
+    cell_timeout_seconds: int = 600
 
     @classmethod
     def from_yaml(cls, path: str) -> "BenchConfig":
@@ -67,7 +68,8 @@ class BenchConfig:
             quality=QualityConfig(**data.get("quality", {})) if "quality" in data else QualityConfig(),
             output=OutputConfig(**data.get("output", {})) if "output" in data else OutputConfig(),
             cliff_latency_multiplier=float(data.get("cliff_latency_multiplier", 10.0)),
-            cliff_error_threshold=float(data.get("cliff_error_threshold", 0.1))
+            cliff_error_threshold=float(data.get("cliff_error_threshold", 0.1)),
+            cell_timeout_seconds=int(data.get("cell_timeout_seconds", 600))
         )
         config.validate()
         return config

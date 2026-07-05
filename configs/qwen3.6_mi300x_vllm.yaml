@@ -1,0 +1,30 @@
+target:
+  endpoint: "http://localhost:8000/v1"
+  model: "Qwen/Qwen3.6-27B-Instruct"
+  api_style: "openai_chat"
+  metrics_endpoint: "http://localhost:8000/metrics"
+
+model:
+  context_window: 32768
+  quantization: "none"
+  kv_precision: "bf16"
+
+hardware:
+  gpu: "AMD Instinct MI300X"
+  vram_gb: 192
+  driver: "rocm"
+
+workloads:
+  - single_long
+  - concurrent_uniform
+  - shared_prefix
+  - mixed
+
+bands: [short, medium, long]
+concurrencies: [1, 8, 32, 128, 256, 512]
+seeds: [42]
+repeats: 1
+
+output:
+  dir: "results/"
+  formats: [json, markdown]

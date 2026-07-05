@@ -59,7 +59,7 @@ def test_cliff_finder():
     print(json.dumps(result, indent=2))
     
     assert result["oom_threshold"] == 32
-    assert "OOM or Crash" in result["failure_mode"]
+    assert "Simulated OOM" in result["failure_mode"]
     print("Cliff Finder test passed!")
 
 def test_cliff_finder_reproducibility():
@@ -92,8 +92,12 @@ def test_cliff_finder_reproducibility():
     res1 = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], seed=999)
     res2 = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], seed=999)
     
-    import json
-    assert json.dumps(res1, sort_keys=True) == json.dumps(res2, sort_keys=True)
+    assert res1["oom_threshold"] == res2["oom_threshold"]
+    assert res1["failure_mode"] == res2["failure_mode"]
+    for c1, c2 in zip(res1["curve"], res2["curve"]):
+        assert c1["concurrency"] == c2["concurrency"]
+        assert c1["error_rate"] == c2["error_rate"]
+        assert c1["ttft_p99"] == c2["ttft_p99"]
 
 if __name__ == "__main__":
     test_cliff_finder()

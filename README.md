@@ -71,6 +71,8 @@ All methods produce a hardware-fingerprinted `results/results.json` and `results
 
 Each runs across four context bands (4k / 32k / 128k / 256k) and four concurrency bands (1 / 8 / 32 / 128).
 
+> **Note on `mixed` workload**: The mixed workload is configured by a target band. It generates prompts drawn from a statistical distribution (40% short, 30% medium, etc.), but explicitly caps any generated prompt at the cell's target band. For example, a `MEDIUM` cell will only generate `SHORT` and `MEDIUM` prompts, simulating a mix up to the requested tier.
+
 ## The cliff finder
 
 The signature feature. For each (workload × context band), inferbench ramps concurrency until the system breaks:

@@ -45,8 +45,9 @@ This launches a clean terminal UI to guide you through the setup and optionally 
 ### 3. Advanced Configuration (YAML)
 For CI/CD and strict reproducible runs, you can provide a YAML configuration file. 
 ```bash
-python -m inferbench run --config configs/mock_test.yaml
+python -m inferbench run --config configs/example_config.yaml
 ```
+You can view a fully documented example configuration in [`configs/example_config.yaml`](configs/example_config.yaml). This allows you to fine-tune the hardware fingerprint metadata, set explicit cliff thresholds, and define the exact concurrency ladder for the test.
 
 All methods produce a hardware-fingerprinted `results/results.json` and `results/results.md`.
 

@@ -90,3 +90,8 @@
 ### concurrentuniform (EXTREME)
 - **OOM / Cliff Threshold:** Concurrency 1
 - **Failure Mode:** Configuration Limit (Context Exceeded)
+
+## Footnotes (v0.1.2 Baseline)
+- **Throughput numbers:** vLLM 0.23.0 on MI300X uses a Triton attention fallback for Qwen 3.6 hybrid models. Throughput is suboptimal. This is a known vLLM-on-ROCm limitation.
+- **Error rates at high concurrency:** Cells with 100% error rate indicate hard OOM or timeout under sustained load.
+- **GPU fingerprint:** Reconstructed manually post-run due to an incomplete `rocm-smi` JSON parser in v0.1.2.

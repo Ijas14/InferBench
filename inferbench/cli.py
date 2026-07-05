@@ -199,12 +199,27 @@ def main():
                         }
                         all_results.append(result)
     
-    os.makedirs(config.output.dir, exist_ok=True)
+    def safe_join(base_directory, user_path):
+        base = os.path.abspath(os.path.realpath(base_directory))
+        target = os.path.abspath(os.path.realpath(os.path.join(base, user_path)))
+        if os.path.commonpath([base, target]) != base:
+            raise ValueError("VibeSec Error: Path traversal detected in output directory.")
+        return target
+        
+    try:
+        # Default base is current working directory
+        safe_out_dir = safe_join(os.getcwd(), config.output.dir)
+    except ValueError as e:
+        print(f"\n[FATAL ERROR] {e}")
+        import sys
+        sys.exit(1)
+
+    os.makedirs(safe_out_dir, exist_ok=True)
     
     fingerprint = get_hardware_fingerprint()
     
     if "json" in config.output.formats:
-        out_path = os.path.join(config.output.dir, "results.json")
+        out_path = os.path.join(safe_out_dir, "results.json")
         with open(out_path, "w") as f:
             json.dump({
                 "fingerprint": fingerprint,
@@ -213,7 +228,7 @@ def main():
         print(f"Wrote JSON to {out_path}")
         
     if "markdown" in config.output.formats:
-        md_path = os.path.join(config.output.dir, "results.md")
+        md_path = os.path.join(safe_out_dir, "results.md")
         export_markdown(all_results, fingerprint, md_path)
         print(f"Wrote Markdown to {md_path}")
         

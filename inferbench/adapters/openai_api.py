@@ -15,6 +15,14 @@ class OpenAIAdapter(ServerAdapter):
     def send(self, request: Request) -> Response:
         send_time = time.time()
         
+        from urllib.parse import urlparse
+        parsed = urlparse(self.endpoint)
+        if parsed.scheme not in ["http", "https"]:
+            raise ValueError(f"VibeSec Error: Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
+        if parsed.hostname in ["169.254.169.254", "metadata.google.internal", "metadata"]:
+            raise ValueError(f"VibeSec Error: Blocked attempt to access cloud metadata endpoint: {parsed.hostname}")
+
+        
         is_chat = (self.api_style == "openai_chat")
         
         if is_chat:

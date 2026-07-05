@@ -130,6 +130,23 @@ def main():
     curves = []
 
     print(f"Starting inferbench E2E with {config.target.endpoint}")
+    print("Waiting for inference server to become ready...")
+    
+    import time
+    import sys
+    max_retries = 300
+    ready = False
+    for i in range(max_retries):
+        if adapter.health():
+            ready = True
+            break
+        time.sleep(2)
+        
+    if not ready:
+        print("\n[FATAL ERROR] Server did not become ready after 10 minutes. Aborting.")
+        sys.exit(1)
+        
+    print("Server is ready! Beginning benchmark...")
 
     max_model_len = adapter.get_max_model_len()
     if max_model_len:

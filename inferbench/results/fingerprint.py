@@ -55,10 +55,12 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
             )
             if result.returncode == 0:
                 rocm_data = json.loads(result.stdout)
-                # Parse rocm output structure... (simplified for now)
-                # As mock, this will just fail over to mock defaults
-                pass
-    except FileNotFoundError:
+                if "card0" in rocm_data:
+                    card = rocm_data["card0"]
+                    fingerprint["gpu_name"] = card.get("Card series", "Unknown")
+                    fingerprint["gpu_driver"] = card.get("Driver version", "Unknown")
+                    # VRAM stays "Unknown" for v0.1.2 unless we add --showmeminfo
+    except Exception:
         pass
 
     # Software versions

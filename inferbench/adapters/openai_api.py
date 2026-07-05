@@ -7,6 +7,7 @@ from inferbench.config.schema import BenchConfig
 
 class OpenAIAdapter(ServerAdapter):
     def __init__(self, config: BenchConfig):
+        self.config = config
         self.endpoint = config.target.endpoint
         self.model = config.target.model
         self.api_style = config.target.api_style
@@ -150,7 +151,9 @@ class OpenAIAdapter(ServerAdapter):
                         return m.get("max_model_len")
         except Exception:
             pass
-        return None
+            
+        print(f"Warning: Could not retrieve max_model_len from API. Falling back to config.model.context_window ({self.config.model.context_window})")
+        return self.config.model.context_window
 
     def health(self) -> bool:
         try:

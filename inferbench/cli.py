@@ -142,7 +142,7 @@ def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig, 
             
         timeout_seconds = BAND_TIMEOUTS.get(band.name, config.cell_timeout_seconds)
         print(f"Running cliff finder for {workload.__class__.__name__} | Band: {band.name}")
-        cliff_res = find_cliff(adapter, workload, band, config.concurrencies, timeout_seconds, seed=config.seeds[0])
+        cliff_res = find_cliff(adapter, workload, config, band, config.concurrencies, timeout_seconds, seed=config.seeds[0])
         all_results.append(cliff_res)
         results.append(cliff_res)
         save_checkpoint()

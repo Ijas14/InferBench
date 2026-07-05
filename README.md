@@ -96,11 +96,12 @@ The project is structured around a modular pipeline:
 
 When you run Inferbench against a real SGLang or vLLM instance serving any model (e.g., LLaMA, Qwen), you can submit your `results.json` and `results.md` to our central leaderboard. Open a PR with your `.md` and `.json` files in the `baseline_results/` directory!
 
-> **Note on LongBench (v0.1)**:
-> The initial version (v0.1) relies exclusively on the NIAH (Needle in a Haystack) task for testing quality retention during compression. LongBench tasks will be evaluated and integrated in v0.2.
-
-> **Note on Metrics (v0.1)**: 
-> Memory metrics (`memory_peak_kv`, etc.) are not currently scraped in this version. TTFT (Time-To-First-Token) metrics on non-streaming servers are equivalent to complete response time. Real TTFT latency requires a streaming-enabled adapter.
+> **Known Limitations (v0.1.2)**:
+> - Per-request throughput includes prefill time (aggregate throughput is correct; v0.1.3 fix).
+> - Inter-token latency not computed in v0.1.2 (v0.1.3 fix).
+> - Memory metrics not scraped in v0.1.2 (v0.2 fix).
+> - Quality metrics (NIAH) not wired into the automated run (v0.1.3 fix).
+> - Token counts use `tiktoken` (GPT-3.5 tokenizer) as an approximation. For Qwen-specific token counts, install `transformers` (v0.2 fix).
 
 ## Contributing
 

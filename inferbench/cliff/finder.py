@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 from inferbench.adapters.base import ServerAdapter
 from inferbench.workloads.base import Workload
 from inferbench.config.defaults import ContextBand
+from inferbench.config.schema import BenchConfig
 from inferbench.metrics.collector import MetricsCollector
 from inferbench.metrics.performance import compute_performance
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -49,6 +50,7 @@ def run_cell_with_pacing(adapter: ServerAdapter, requests: list, concurrency: in
 def find_cliff(
     adapter: ServerAdapter,
     workload: Workload,
+    config: BenchConfig,
     context_band: ContextBand,
     concurrency_ladder: List[int],
     timeout_seconds: int = 600,
@@ -111,15 +113,15 @@ def find_cliff(
             cliff_concurrency = concurrency
             break
             
-        if error_rate > workload.config.cliff_error_threshold:
-            failure_mode = f"High Error Rate (>{workload.config.cliff_error_threshold*100:.0f}%)"
+        if error_rate > config.cliff_error_threshold:
+            failure_mode = f"High Error Rate (>{config.cliff_error_threshold*100:.0f}%)"
             curve_point["note"] = failure_mode
             curve.append(curve_point)
             cliff_concurrency = concurrency
             break
             
-        if baseline_ttft_p99 and baseline_ttft_p99 > 0 and ttft_p99 > workload.config.cliff_latency_multiplier * baseline_ttft_p99:
-            failure_mode = f"Latency Spike (>{workload.config.cliff_latency_multiplier}x baseline)"
+        if baseline_ttft_p99 and baseline_ttft_p99 > 0 and ttft_p99 > config.cliff_latency_multiplier * baseline_ttft_p99:
+            failure_mode = f"Latency Spike (>{config.cliff_latency_multiplier}x baseline)"
             curve_point["note"] = failure_mode
             curve.append(curve_point)
             cliff_concurrency = concurrency

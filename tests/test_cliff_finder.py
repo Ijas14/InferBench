@@ -51,6 +51,7 @@ def test_cliff_finder():
     result = find_cliff(
         adapter=adapter,
         workload=workload,
+        config=config,
         context_band=ContextBand.SHORT,
         concurrency_ladder=[1, 8, 32, 128],
         seed=42
@@ -89,8 +90,8 @@ def test_cliff_finder_reproducibility():
     adapter = DetMockAdapter(config)
     workload = ConcurrentUniformWorkload(config)
     
-    res1 = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], seed=999)
-    res2 = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], seed=999)
+    res1 = find_cliff(adapter, workload, config, ContextBand.SHORT, [1, 8, 32], seed=999)
+    res2 = find_cliff(adapter, workload, config, ContextBand.SHORT, [1, 8, 32], seed=999)
     
     assert res1["oom_threshold"] == res2["oom_threshold"]
     assert res1["failure_mode"] == res2["failure_mode"]
@@ -131,7 +132,7 @@ def test_cliff_finder_timeout():
     workload = ConcurrentUniformWorkload(config)
     
     # We pass timeout_seconds=1 to force the timeout on c=32
-    result = find_cliff(adapter, workload, ContextBand.SHORT, [1, 8, 32], timeout_seconds=1, seed=999)
+    result = find_cliff(adapter, workload, config, ContextBand.SHORT, [1, 8, 32], timeout_seconds=1, seed=999)
     
     assert result["oom_threshold"] == 32
     assert "Cell Timeout" in result["failure_mode"]

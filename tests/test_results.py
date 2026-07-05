@@ -30,13 +30,13 @@ def test_fingerprint_parses_rocm_smi():
             if 'nvidia-smi' in args[0]:
                 return MagicMock(returncode=127) # not found
             elif 'rocm-smi' in args[0]:
-                return MagicMock(returncode=0, stdout='{"card0": {"VRAM Total Memory (B)": "17179869184"}}')
+                return MagicMock(returncode=0, stdout='{"card0": {"Card series": "AMD Instinct MI300X", "Driver version": "6.1.1"}}')
             return MagicMock(returncode=1)
         mock_run.side_effect = side_effect
         
         fp = get_hardware_fingerprint()
-        # Since rocm parsing isn't fully implemented yet, it defaults to Unknown
-        assert fp["gpu_name"] == "Unknown"
+        assert fp["gpu_name"] == "AMD Instinct MI300X"
+        assert fp["gpu_driver"] == "6.1.1"
 
 def test_markdown_exporter(tmp_path):
     """

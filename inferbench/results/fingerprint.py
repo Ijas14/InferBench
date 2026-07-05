@@ -45,21 +45,35 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
                 fingerprint["gpu_name"] = parts[0]
                 fingerprint["gpu_vram_gb"] = round(int(parts[1]) / 1024, 2)
                 fingerprint["gpu_driver"] = parts[2]
-        else:
-            # Try rocm-smi
-            result = subprocess.run(
-                ['rocm-smi', '--showproductname', '--showdriverversion', '--json'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            if result.returncode == 0:
-                rocm_data = json.loads(result.stdout)
-                if "card0" in rocm_data:
-                    card = rocm_data["card0"]
-                    fingerprint["gpu_name"] = card.get("Card series", "Unknown")
+                return fingerprint
+    except Exception:
+        pass
+        
+    try:
+        # Try rocm-smi
+        result = subprocess.run(
+            ['rocm-smi', '--showproductname', '--showdriverversion', '--json'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if result.returncode == 0:
+            rocm_data = json.loads(result.stdout)
+            if "card0" in rocm_data:
+                card = rocm_data["card0"]
+                # Try both capitalizations just in case different ROCm versions differ
+                gpu_name = card.get("Card Series", card.get("Card series", "Unknown"))
+                if gpu_name == "Unknown":
+                    gpu_name = card.get("Card Model", "Unknown")
+                fingerprint["gpu_name"] = gpu_name
+                
+                # Driver version is usually at the root "system" level
+                if "system" in rocm_data:
+                    fingerprint["gpu_driver"] = rocm_data["system"].get("Driver version", "Unknown")
+                else:
                     fingerprint["gpu_driver"] = card.get("Driver version", "Unknown")
-                    # VRAM stays "Unknown" for v0.1.2 unless we add --showmeminfo
+                
+                # VRAM stays "Unknown" for v0.1.2/3 unless we add --showmeminfo
     except Exception:
         pass
 

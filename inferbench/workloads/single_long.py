@@ -55,8 +55,10 @@ class FillerCorpus:
         return self.decode_func(truncated_tokens)
 
 class SingleLongWorkload(Workload):
-    def __init__(self, config: BenchConfig):
+    def __init__(self, config: BenchConfig, max_model_len: int = None, max_tokens: int = 256):
         self.config = config
+        self.max_model_len = max_model_len
+        self.max_tokens = max_tokens
         self.corpus = FillerCorpus()
 
     def schedule(self, seed: int, band: ContextBand, concurrency: int) -> List[Request]:

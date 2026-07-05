@@ -130,14 +130,13 @@ BAND_TIMEOUTS = {
     "EXTREME": 900,
 }
 
-def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig, all_results: list, save_checkpoint) -> list:
+def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig, all_results: list, save_checkpoint, max_model_len: int, max_tokens: int) -> list:
     results = []
-    max_model_len = adapter.get_max_model_len()
     
     for band_str in config.bands:
         band = BAND_MAP[band_str.lower()]
-        if max_model_len and band.value > max_model_len:
-            print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
+        if max_model_len and (band.value + max_tokens) > max_model_len:
+            print(f"Skipping band {band.name} because its length + max_tokens ({band.value + max_tokens}) exceeds max_model_len ({max_model_len})")
             continue
             
         timeout_seconds = BAND_TIMEOUTS.get(band.name, config.cell_timeout_seconds)
@@ -148,14 +147,13 @@ def execute_cliff_finder(adapter: OpenAIAdapter, workload, config: BenchConfig, 
         save_checkpoint()
     return results
 
-def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, config: BenchConfig, all_results: list, save_checkpoint) -> list:
+def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, config: BenchConfig, all_results: list, save_checkpoint, max_model_len: int, max_tokens: int) -> list:
     results = []
-    max_model_len = adapter.get_max_model_len()
     
     for band_str in config.bands:
         band = BAND_MAP[band_str.lower()]
-        if max_model_len and band.value > max_model_len:
-            print(f"Skipping band {band.name} because its length ({band.value}) exceeds max_model_len ({max_model_len})")
+        if max_model_len and (band.value + max_tokens) > max_model_len:
+            print(f"Skipping band {band.name} because its length + max_tokens ({band.value + max_tokens}) exceeds max_model_len ({max_model_len})")
             continue
             
         timeout_seconds = BAND_TIMEOUTS.get(band.name, config.cell_timeout_seconds)
@@ -224,9 +222,9 @@ def main():
         
     print(" Ready.\nBeginning benchmark...")
 
-    max_model_len = adapter.get_max_model_len()
-    if max_model_len:
-        print(f"Detected max_model_len = {max_model_len}")
+    max_model_len = adapter.get_max_model_len() or config.model.context_window
+    max_tokens = 256
+    print(f"Global Context Limit: {max_model_len} tokens")
 
     try:
         # Default base is current working directory
@@ -256,13 +254,13 @@ def main():
             print(f"Skipping unknown workload {w_name}")
             continue
             
-        workload = WORKLOAD_FACTORY[w_name](config)
+        workload = WORKLOAD_FACTORY[w_name](config, max_model_len, max_tokens)
         
         if w_name == "concurrent_uniform":
-            res = execute_cliff_finder(adapter, workload, config, all_results, save_checkpoint)
+            res = execute_cliff_finder(adapter, workload, config, all_results, save_checkpoint, max_model_len, max_tokens)
             curves.extend(res)
         else:
-            execute_standard_workload(adapter, workload, w_name, config, all_results, save_checkpoint)
+            execute_standard_workload(adapter, workload, w_name, config, all_results, save_checkpoint, max_model_len, max_tokens)
     
     if "json" in config.output.formats:
         out_path = os.path.join(safe_out_dir, "results.json")

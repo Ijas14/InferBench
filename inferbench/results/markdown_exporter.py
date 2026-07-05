@@ -29,7 +29,7 @@ def export_markdown(results: List[Dict[str, Any]], fingerprint: Dict[str, Any], 
         else:
             md.append(f"| {r['workload']} | {r['context_band']} | {r['concurrency']} | {r.get('throughput_aggregate', 0):.2f} | {r.get('latency_ttft_p99', 0):.2f} | {r.get('error_count', 0)} |")
             
-    md.append("\n> **Note on Metrics (v0.1)**: Memory metrics (`memory_peak_kv`, etc.) are not currently scraped in this version. TTFT metrics on non-streaming servers are equivalent to complete response time.")
+    md.append("\n> **Note on Metrics (v0.1.3)**: Memory metrics (`memory_peak_kv`, etc.) are not currently scraped in this version. Per-request throughput includes prefill time (v0.1.4 fix).")
     md.append("\n")
     
     # Cliff Finder Highlights

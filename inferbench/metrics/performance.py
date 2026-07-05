@@ -35,9 +35,15 @@ def compute_performance(responses: List[Response], collector: MetricsCollector) 
     wall_clock_time = collector.end_time - collector.start_time
     throughput_aggregate = total_output_tokens / wall_clock_time if wall_clock_time > 0 else 0.0
 
-    per_req_throughputs = [r.output_tokens / (r.complete_time - r.send_time) for r in valid_responses if (r.complete_time - r.send_time) > 0]
+    per_req_throughputs = [r.output_tokens / (r.complete_time - r.first_token_time) for r in valid_responses if r.first_token_time and (r.complete_time - r.first_token_time) > 0]
     
     ttfts = [(r.first_token_time - r.send_time) * 1000 for r in valid_responses if r.first_token_time]
+
+    inter_token_latencies = []
+    for r in valid_responses:
+        if len(r.token_times) > 1:
+            for i in range(1, len(r.token_times)):
+                inter_token_latencies.append((r.token_times[i] - r.token_times[i-1]) * 1000)
 
     def pctl(data, p):
         if not data: return 0.0
@@ -50,9 +56,9 @@ def compute_performance(responses: List[Response], collector: MetricsCollector) 
         "latency_ttft_p50": pctl(ttfts, 50),
         "latency_ttft_p95": pctl(ttfts, 95),
         "latency_ttft_p99": pctl(ttfts, 99),
-        "latency_inter_token_p50": 0.0, # N/A for non-streaming mock
-        "latency_inter_token_p95": 0.0,
-        "latency_inter_token_p99": 0.0,
+        "latency_inter_token_p50": pctl(inter_token_latencies, 50),
+        "latency_inter_token_p95": pctl(inter_token_latencies, 95),
+        "latency_inter_token_p99": pctl(inter_token_latencies, 99),
         "memory_peak_kv": 0, # Mocked
         "memory_peak_total": 0,
         "error_count": error_count,

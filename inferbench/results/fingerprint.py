@@ -52,7 +52,7 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
     try:
         # Try rocm-smi
         result = subprocess.run(
-            ['rocm-smi', '--showproductname', '--showdriverversion', '--json'],
+            ['rocm-smi', '--showproductname', '--showdriverversion', '--showmeminfo', 'vram', '--json'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -87,7 +87,9 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
                 else:
                     fingerprint["gpu_driver"] = card.get("Driver version", "Unknown")
                 
-                # VRAM stays "Unknown" for v0.1.2/3 unless we add --showmeminfo
+                vram_bytes = card.get("VRAM Total Memory (B)")
+                if vram_bytes and str(vram_bytes).isdigit():
+                    fingerprint["gpu_vram_gb"] = round(int(vram_bytes) / (1024**3))
     except Exception:
         pass
 

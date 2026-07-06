@@ -99,14 +99,12 @@ The project is structured around a modular pipeline:
 When you run Inferbench against a real SGLang or vLLM instance serving any model (e.g., LLaMA, Qwen), you can submit your `results.json` and `results.md` to our central leaderboard. Open a PR with your `.md` and `.json` files in the `baseline_results/` directory!
 
 ### Official Baselines
-- [AMD MI300X with vLLM 0.23.0 (Qwen 3.6)](baseline_results/mi300x_qwen3.6_vllm0.23/results.md) — Demonstrates graceful error handling, cliff thresholds, and hardware fingerprinting under sustained load.
+- [AMD MI300X with vLLM 0.23.0 (Qwen 2.5, v0.1.3 Warmed)](baseline_results/mi300x_qwen_vllm0.23_v0.1.3/results.md) — Demonstrates graceful error handling, cliff thresholds, Triton JIT warmup stability, and MI300X hardware fingerprinting under sustained load.
 
-> **Known Limitations (v0.1.2)**:
-> - Per-request throughput includes prefill time (aggregate throughput is correct; v0.1.3 fix).
-> - Inter-token latency not computed in v0.1.2 (v0.1.3 fix).
-> - Memory metrics not scraped in v0.1.2 (v0.2 fix).
-> - Quality metrics (NIAH) not wired into the automated run (v0.1.3 fix).
-> - Token counts use `tiktoken` (GPT-3.5 tokenizer) as an approximation. For Qwen-specific token counts, install `transformers` (v0.2 fix).
+> **Known Limitations (v0.1.4 target)**:
+> - Per-request throughput includes prefill time (aggregate throughput is correct; v0.1.4 fix).
+> - Memory metrics not scraped in v0.1.3 (v0.1.4 fix).
+> - Token counts use `tiktoken` (GPT-3.5 tokenizer) as an approximation. For Qwen-specific token counts, install `transformers` (v0.1.4 fix).
 
 ## Contributing
 

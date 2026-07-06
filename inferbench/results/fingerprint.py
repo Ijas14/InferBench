@@ -59,8 +59,9 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
         )
         if result.returncode == 0:
             rocm_data = json.loads(result.stdout)
-            if "card0" in rocm_data:
-                card = rocm_data["card0"]
+            card_key = next((k for k in rocm_data.keys() if k.startswith("card")), None)
+            if card_key:
+                card = rocm_data[card_key]
                 # Try both capitalizations just in case different ROCm versions differ
                 gpu_name = card.get("Card Series", card.get("Card series", "Unknown"))
                 if gpu_name == "Unknown":

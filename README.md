@@ -99,7 +99,7 @@ The project is structured around a modular pipeline:
 When you run Inferbench against a real SGLang or vLLM instance serving any model (e.g., LLaMA, Qwen), you can submit your `results.json` and `results.md` to our central leaderboard. Open a PR with your `.md` and `.json` files in the `baseline_results/` directory!
 
 ### Official Baselines
-- [AMD MI300X with vLLM 0.23.0 (Qwen 2.5, v0.1.3 Warmed)](baseline_results/mi300x_qwen_vllm0.23_v0.1.3/results.md) — Demonstrates graceful error handling, cliff thresholds, Triton JIT warmup stability, and MI300X hardware fingerprinting under sustained load.
+- [AMD MI300X with vLLM 0.23.0 (Qwen 3.6 27B, v0.1.3 Warmed)](baseline_results/mi300x_qwen_vllm0.23_v0.1.3/results.md) — Demonstrates graceful error handling, cliff thresholds, Triton JIT warmup stability, and MI300X hardware fingerprinting under sustained load.
 
 > **Known Limitations (v0.1.4 target)**:
 > - Per-request throughput includes prefill time (aggregate throughput is correct; v0.1.4 fix).

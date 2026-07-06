@@ -64,11 +64,21 @@ def get_hardware_fingerprint() -> Dict[str, Any]:
                 card = rocm_data[card_key]
                 # Try both capitalizations just in case different ROCm versions differ
                 gpu_name = card.get("Card Series", card.get("Card series", "Unknown"))
+                
+                # If we get garbage, try GFX Version which is highly reliable for AMD
                 if gpu_name in ["Unknown", "N/A", ""]:
-                    gpu_name = card.get("Card Model", "Unknown")
-                    if gpu_name in ["Unknown", "N/A", ""]:
-                        # Fallback to Device if available
-                        gpu_name = card.get("Device", "Unknown")
+                    gfx = card.get("GFX Version", "")
+                    if gfx == "gfx942":
+                        gpu_name = "AMD Instinct MI300X"
+                    elif gfx == "gfx941":
+                        gpu_name = "AMD Instinct MI300A"
+                    elif gfx == "gfx90a":
+                        gpu_name = "AMD Instinct MI250X"
+                    else:
+                        gpu_name = card.get("Card Model", "Unknown")
+                        if gpu_name in ["Unknown", "N/A", ""]:
+                            gpu_name = gfx or "Unknown"
+
                 fingerprint["gpu_name"] = gpu_name
                 
                 # Driver version is usually at the root "system" level

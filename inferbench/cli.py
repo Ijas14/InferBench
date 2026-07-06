@@ -177,6 +177,29 @@ def execute_standard_workload(adapter: OpenAIAdapter, workload, w_name: str, con
                     save_checkpoint()
     return results
 
+def warmup_server(adapter, max_tokens: int):
+    """
+    Sends concurrent dummy requests to force Triton JIT compilation for various block sizes
+    and batch configurations before the timed benchmark starts.
+    """
+    from inferbench.workloads.base import Request
+    import concurrent.futures
+    print("Warming up server (forcing Triton JIT compilations)... ", end="", flush=True)
+    
+    # Send a small batch of requests to trigger standard, batch, and prefix kernels
+    reqs = [
+        Request(request_id=-1, prompt="This is a warmup request to trigger JIT compilation for short context.", max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
+        Request(request_id=-2, prompt="This is a second warmup request to trigger batching kernels.", max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
+        Request(request_id=-3, prompt="A " * 500, max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
+    ]
+    
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(adapter.send, r) for r in reqs]
+            concurrent.futures.wait(futures)
+        print("Done.")
+    except Exception as e:
+        print(f"Failed ({e}). Continuing anyway.")
 def main():
     parser = argparse.ArgumentParser(description="Inferbench Runner")
     parser.add_argument("command", choices=["run", "wizard"])
@@ -225,6 +248,8 @@ def main():
     max_model_len = adapter.get_max_model_len() or config.model.context_window
     max_tokens = 256
     print(f"Global Context Limit: {max_model_len} tokens")
+    
+    warmup_server(adapter, max_tokens)
 
     try:
         # Default base is current working directory

@@ -186,15 +186,19 @@ def warmup_server(adapter, max_tokens: int):
     import concurrent.futures
     print("Warming up server (forcing Triton JIT compilations)... ", end="", flush=True)
     
-    # Send a small batch of requests to trigger standard, batch, and prefix kernels
-    reqs = [
-        Request(request_id=-1, prompt="This is a warmup request to trigger JIT compilation for short context.", max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
-        Request(request_id=-2, prompt="This is a second warmup request to trigger batching kernels.", max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
-        Request(request_id=-3, prompt="A " * 500, max_tokens=max_tokens, send_at_offset=0.0, metadata={}),
-    ]
+    # Send a heavy batch of requests to trigger standard, batch, and large prefix kernels
+    # Varying prompt lengths forces Triton to compile different shape configurations
+    reqs = []
+    for i in range(16):
+        # Generate prompt lengths from small (50 tokens) to large (16,000 tokens)
+        length_multiplier = (i % 4 + 1) * 500
+        reqs.append(
+            Request(request_id=-i-1, prompt="A " * length_multiplier, max_tokens=max_tokens, send_at_offset=0.0, metadata={})
+        )
     
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        # High concurrency to trigger batched prefill and decode kernels
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             futures = [executor.submit(adapter.send, r) for r in reqs]
             concurrent.futures.wait(futures)
         print("Done.")
